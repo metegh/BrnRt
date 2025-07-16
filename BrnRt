@@ -7,12 +7,11 @@ local Window = Fluent:CreateWindow({
     SubTitle = "by dawid",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 460),
-    Acrylic = true, -- The blur may be detectable, setting this to false disables blur entirely
+    Acrylic = true,
     Theme = "Dark",
-    MinimizeKey = Enum.KeyCode.LeftControl -- Used when theres no MinimizeKeybind
+    MinimizeKey = Enum.KeyCode.LeftControl
 })
 
---Fluent provides Lucide Icons https://lucide.dev/icons/ for the tabs, icons are optional
 local Tabs = {
     Main = Window:AddTab({ Title = "Main", Icon = "" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
@@ -20,107 +19,83 @@ local Tabs = {
 
 local Options = Fluent.Options
 
+-- Инициализация игрока
+local player = game:GetService("Players").LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local savedCFrame = nil
+
 do
     Fluent:Notify({
         Title = "Notification",
         Content = "This is a notification",
-        SubContent = "SubContent", -- Optional
-        Duration = 5 -- Set to nil to make the notification not disappear
+        SubContent = "SubContent",
+        Duration = 5
     })
-
-
 
     Tabs.Main:AddParagraph({
         Title = "Paragraph",
         Content = "This is a paragraph.\nSecond line!"
     })
 
-
-
-local player = game:GetService("Players").LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
-
-local savedCFrame = nil -- Здесь хранится сохранённая позиция
-
-local player = game:GetService("Players").LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
-
-local savedCFrame = nil -- Здесь хранится позиция
-
--- Кнопка 1: Сохранить позицию
-Tabs.Main:AddButton({
-    Title = "📌 Сохранить точку",
-    Description = "Запоминает текущие координаты",
-    Callback = function()
-        savedCFrame = humanoidRootPart.CFrame
-        print("✅ Позиция сохранена!")
-    end
-})
-
--- Кнопка 2: Телепорт (3 метода на выбор)
-Tabs.Main:AddButton({
-    Title = "🚀 Телепорт на точку",
-    Description = "Мгновенное перемещение",
-    Callback = function()
-        if not savedCFrame then 
-            print("❌ Нет сохранённой точки!")
-            return 
+    -- Кнопка 1: Сохранить позицию
+    Tabs.Main:AddButton({
+        Title = "Сохранить точку",
+        Description = "Запоминает текущие координаты",
+        Callback = function()
+            savedCFrame = humanoidRootPart.CFrame
+            Fluent:Notify({
+                Title = "Сохранение",
+                Content = "Позиция сохранена!",
+                Duration = 2
+            })
         end
+    })
 
-        🔥 Вариант 2: Через Network bypass (если есть защита)
-        humanoidRootPart.Anchored = true
-        humanoidRootPart.CFrame = savedCFrame
-        task.wait(0.05)
-        humanoidRootPart.Anchored = false
+    -- Кнопка 2: Телепорт
+    Tabs.Main:AddButton({
+        Title = "Телепорт на точку",
+        Description = "Мгновенное перемещение",
+        Callback = function()
+            if not savedCFrame then 
+                Fluent:Notify({
+                    Title = "Ошибка",
+                    Content = "Нет сохранённой точки!",
+                    Duration = 2
+                })
+                return 
+            end
 
-        -- 🔥 Вариант 3: Через изменение Velocity + CFrame
-        -- humanoidRootPart.Velocity = Vector3.zero
-        -- humanoidRootPart.AssemblyLinearVelocity = Vector3.zero
-        -- humanoidRootPart.CFrame = savedCFrame
+            -- Вариант 1: Network bypass
+            humanoidRootPart.Anchored = true
+            humanoidRootPart.CFrame = savedCFrame
+            task.wait(0.05)
+            humanoidRootPart.Anchored = false
 
-        print("✨ Телепортация выполнена!")
-    end
-})
-
-
+            Fluent:Notify({
+                Title = "Телепортация",
+                Content = "Успешно перемещено!",
+                Duration = 2
+            })
+        end
+    })
 
     local Toggle = Tabs.Main:AddToggle("MyToggle", {Title = "Toggle", Default = false })
-
     Toggle:OnChanged(function()
         print("Toggle changed:", Options.MyToggle.Value)
     end)
-
     Options.MyToggle:SetValue(false)
-
 end
 
-
--- Addons:
--- SaveManager (Allows you to have a configuration system)
--- InterfaceManager (Allows you to have a interface managment system)
-
--- Hand the library over to our managers
+-- Настройки сохранения
 SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)
-
--- Ignore keys that are used by ThemeManager.
--- (we dont want configs to save themes, do we?)
 SaveManager:IgnoreThemeSettings()
-
--- You can add indexes of elements the save manager should ignore
 SaveManager:SetIgnoreIndexes({})
-
--- use case for doing it this way:
--- a script hub could have themes in a global folder
--- and game configs in a separate folder per game
 InterfaceManager:SetFolder("FluentScriptHub")
 SaveManager:SetFolder("FluentScriptHub/specific-game")
-
 InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
-
 
 Window:SelectTab(1)
 
@@ -130,6 +105,4 @@ Fluent:Notify({
     Duration = 8
 })
 
--- You can use the SaveManager:LoadAutoloadConfig() to load a config
--- which has been marked to be one that auto loads!
 SaveManager:LoadAutoloadConfig()
