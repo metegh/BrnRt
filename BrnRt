@@ -87,7 +87,7 @@ Tabs.Main:AddButton({
 Tabs.Main:AddButton({
     Title = "🔗 Получить ключ",
     Callback = function()
-        setclipboard("https://pandaauth.gg/your-link-here") -- заменишь на свою ссылку
+        setclipboard("https://pandaauth.gg/rblhub") -- заменишь на свою ссылку
         Fluent:Notify({
             Title = "Скопировано!",
             Content = "Ссылка на PandaAuth скопирована.",
