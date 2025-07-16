@@ -1,108 +1,97 @@
+local HttpService = game:GetService("HttpService")
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
-local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
-local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
+
+-- 🔹 Твои данные PandaAuth
+local API_KEY = "84a02f231b73ee4f6c6a8eb3e82a6198523c32e1dcf19f09e8bc132f72f0b497"
+local SERVICE_IDENTIFIER = "rblhub" -- Твой Identifier Name
+local API_URL = "https://api.pandadevelopment.net/api/user"
 
 local Window = Fluent:CreateWindow({
-    Title = "Fluent " .. Fluent.Version,
-    SubTitle = "by dawid",
+    Title = "Key System | PandaAuth",
+    SubTitle = "by PandaDevelopment",
     TabWidth = 160,
-    Size = UDim2.fromOffset(580, 460),
+    Size = UDim2.fromOffset(400, 200),
     Acrylic = true,
-    Theme = "Dark",
-    MinimizeKey = Enum.KeyCode.LeftControl
+    Theme = "Dark"
 })
 
 local Tabs = {
-    Main = Window:AddTab({ Title = "Main", Icon = "" }),
-    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
+    Main = Window:AddTab({ Title = "Key System", Icon = "" })
 }
 
-local Options = Fluent.Options
+local userKey = ""
 
--- Инициализация игрока
-local player = game:GetService("Players").LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
-local savedCFrame = nil
-
-do
-    Fluent:Notify({
-        Title = "Notification",
-        Content = "This is a notification",
-        SubContent = "SubContent",
-        Duration = 5
-    })
-
-    Tabs.Main:AddParagraph({
-        Title = "Paragraph",
-        Content = "This is a paragraph.\nSecond line!"
-    })
-
-    -- Кнопка 1: Сохранить позицию
-    Tabs.Main:AddButton({
-        Title = "Сохранить точку",
-        Description = "Запоминает текущие координаты",
-        Callback = function()
-            savedCFrame = humanoidRootPart.CFrame
-            Fluent:Notify({
-                Title = "Сохранение",
-                Content = "Позиция сохранена!",
-                Duration = 2
-            })
-        end
-    })
-
-    -- Кнопка 2: Телепорт
-    Tabs.Main:AddButton({
-        Title = "Телепорт на точку",
-        Description = "Мгновенное перемещение",
-        Callback = function()
-            if not savedCFrame then 
-                Fluent:Notify({
-                    Title = "Ошибка",
-                    Content = "Нет сохранённой точки!",
-                    Duration = 2
-                })
-                return 
-            end
-
-            -- Вариант 1: Network bypass
-            humanoidRootPart.Anchored = true
-            humanoidRootPart.CFrame = savedCFrame
-            task.wait(0.05)
-            humanoidRootPart.Anchored = false
-
-            Fluent:Notify({
-                Title = "Телепортация",
-                Content = "Успешно перемещено!",
-                Duration = 2
-            })
-        end
-    })
-
-    local Toggle = Tabs.Main:AddToggle("MyToggle", {Title = "Toggle", Default = false })
-    Toggle:OnChanged(function()
-        print("Toggle changed:", Options.MyToggle.Value)
-    end)
-    Options.MyToggle:SetValue(false)
-end
-
--- Настройки сохранения
-SaveManager:SetLibrary(Fluent)
-InterfaceManager:SetLibrary(Fluent)
-SaveManager:IgnoreThemeSettings()
-SaveManager:SetIgnoreIndexes({})
-InterfaceManager:SetFolder("FluentScriptHub")
-SaveManager:SetFolder("FluentScriptHub/specific-game")
-InterfaceManager:BuildInterfaceSection(Tabs.Settings)
-SaveManager:BuildConfigSection(Tabs.Settings)
-
-Window:SelectTab(1)
-
-Fluent:Notify({
-    Title = "Fluent",
-    Content = "The script has been loaded.",
-    Duration = 8
+-- ✅ ТЕКСТБОКС ДЛЯ ВВОДА КЛЮЧА
+local KeyInput = Tabs.Main:AddInput("KeyInput", {
+    Title = "Введите ключ:",
+    Default = "",
+    Placeholder = "Ваш PandaAuth ключ",
+    Finished = true,
+    Callback = function(Value)
+        userKey = Value
+        print("Ключ введён:", userKey)
+    end
 })
 
-SaveManager:LoadAutoloadConfig()
+-- ✅ КНОПКА ПРОВЕРКИ КЛЮЧА
+Tabs.Main:AddButton({
+    Title = "✅ Проверить ключ",
+    Callback = function()
+        if userKey == "" then
+            return Fluent:Notify({Title = "Ошибка", Content = "Введите ключ!", Duration = 5})
+        end
+
+        local Response
+        pcall(function()
+            Response = syn.request({
+                Url = API_URL,
+                Method = "GET",
+                Headers = {
+                    ["Authorization"] = "Bearer " .. userKey,
+                    ["x-api-key"] = API_KEY,
+                    ["service"] = SERVICE_IDENTIFIER
+                }
+            })
+        end)
+
+        if not Response or Response.StatusCode ~= 200 then
+            return Fluent:Notify({
+                Title = "Ошибка",
+                Content = "Неверный ключ или API недоступно!",
+                Duration = 5
+            })
+        end
+
+        local Data = HttpService:JSONDecode(Response.Body)
+
+        if Data and Data.id then
+            Fluent:Notify({
+                Title = "Успех!",
+                Content = "Добро пожаловать, " .. Data.username,
+                Duration = 5
+            })
+
+            -- ✅ здесь запускается твой хаб:
+            -- loadstring(game:HttpGet("https://site.com/your-main-hub.lua"))()
+        else
+            Fluent:Notify({
+                Title = "Ошибка",
+                Content = "Ключ не найден!",
+                Duration = 5
+            })
+        end
+    end
+})
+
+-- ✅ КНОПКА ПОЛУЧЕНИЯ КЛЮЧА
+Tabs.Main:AddButton({
+    Title = "🔗 Получить ключ",
+    Callback = function()
+        setclipboard("https://pandaauth.gg/your-link-here") -- заменишь на свою ссылку
+        Fluent:Notify({
+            Title = "Скопировано!",
+            Content = "Ссылка на PandaAuth скопирована.",
+            Duration = 5
+        })
+    end
+})
