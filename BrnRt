@@ -1,10 +1,17 @@
 local HttpService = game:GetService("HttpService")
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 
--- 🔹 Твои данные PandaAuth
+-- 🔹 PandaAuth Настройки
 local API_KEY = "84a02f231b73ee4f6c6a8eb3e82a6198523c32e1dcf19f09e8bc132f72f0b497"
-local SERVICE_IDENTIFIER = "rblhub" -- Твой Identifier Name
+local SERVICE_IDENTIFIER = "rblhub" -- твой Identifier Name
 local API_URL = "https://api.pandadevelopment.net/api/user"
+local KEY_LINK = "https://pandaauth.gg/rblhub" -- прямая ссылка на получение ключа
+
+-- 🔹 Конфигурация для сохранения ключа
+SaveManager:SetLibrary(Fluent)
+SaveManager:SetFolder("MyHubKeySystem")
+SaveManager:BuildConfigSection()
 
 local Window = Fluent:CreateWindow({
     Title = "Key System | PandaAuth",
@@ -20,6 +27,60 @@ local Tabs = {
 }
 
 local userKey = ""
+local configName = "SavedKey"
+
+-- ✅ Функция проверки ключа
+local function CheckKey(Key)
+    local Response
+    local success, err = pcall(function()
+        Response = syn.request({
+            Url = API_URL,
+            Method = "GET",
+            Headers = {
+                ["Authorization"] = "Bearer " .. Key,
+                ["x-api-key"] = API_KEY,
+                ["service"] = SERVICE_IDENTIFIER
+            }
+        })
+    end)
+
+    if not success or not Response or Response.StatusCode ~= 200 then
+        Fluent:Notify({
+            Title = "Ошибка",
+            Content = "Неверный ключ или API недоступно!",
+            Duration = 5
+        })
+        return false
+    end
+
+    local Data = HttpService:JSONDecode(Response.Body)
+
+    if Data and Data.id then
+        Fluent:Notify({
+            Title = "Успех!",
+            Content = "Добро пожаловать, " .. Data.username,
+            Duration = 5
+        })
+
+        -- ✅ Сохраняем ключ
+        SaveManager:SetIgnoreIndexes({})
+        SaveManager:Save(configName)
+        writefile("MyHubKeySystem/" .. configName .. ".txt", Key)
+
+        -- ✅ Запуск твоего основного хаба
+        task.wait(1)
+        loadstring(game:HttpGet("https://pastebin.com/raw/ВАШ_ХАБ"))()
+
+        return true
+    end
+
+    Fluent:Notify({
+        Title = "Ошибка",
+        Content = "Ключ не найден!",
+        Duration = 5
+    })
+    return false
+end
 
 -- ✅ ТЕКСТБОКС ДЛЯ ВВОДА КЛЮЧА
 local KeyInput = Tabs.Main:AddInput("KeyInput", {
@@ -29,7 +90,6 @@ local KeyInput = Tabs.Main:AddInput("KeyInput", {
     Finished = true,
     Callback = function(Value)
         userKey = Value
-        print("Ключ введён:", userKey)
     end
 })
 
@@ -40,46 +100,7 @@ Tabs.Main:AddButton({
         if userKey == "" then
             return Fluent:Notify({Title = "Ошибка", Content = "Введите ключ!", Duration = 5})
         end
-
-        local Response
-        pcall(function()
-            Response = syn.request({
-                Url = API_URL,
-                Method = "GET",
-                Headers = {
-                    ["Authorization"] = "Bearer " .. userKey,
-                    ["x-api-key"] = API_KEY,
-                    ["service"] = SERVICE_IDENTIFIER
-                }
-            })
-        end)
-
-        if not Response or Response.StatusCode ~= 200 then
-            return Fluent:Notify({
-                Title = "Ошибка",
-                Content = "Неверный ключ или API недоступно!",
-                Duration = 5
-            })
-        end
-
-        local Data = HttpService:JSONDecode(Response.Body)
-
-        if Data and Data.id then
-            Fluent:Notify({
-                Title = "Успех!",
-                Content = "Добро пожаловать, " .. Data.username,
-                Duration = 5
-            })
-
-            -- ✅ здесь запускается твой хаб:
-            -- loadstring(game:HttpGet("https://site.com/your-main-hub.lua"))()
-        else
-            Fluent:Notify({
-                Title = "Ошибка",
-                Content = "Ключ не найден!",
-                Duration = 5
-            })
-        end
+        CheckKey(userKey)
     end
 })
 
@@ -87,7 +108,7 @@ Tabs.Main:AddButton({
 Tabs.Main:AddButton({
     Title = "🔗 Получить ключ",
     Callback = function()
-        setclipboard("https://pandaauth.gg/rblhub") -- заменишь на свою ссылку
+        setclipboard(KEY_LINK)
         Fluent:Notify({
             Title = "Скопировано!",
             Content = "Ссылка на PandaAuth скопирована.",
@@ -95,3 +116,12 @@ Tabs.Main:AddButton({
         })
     end
 })
+
+-- ✅ АВТОЗАГРУЗКА КЛЮЧА (если уже сохранён)
+if isfile("MyHubKeySystem/" .. configName .. ".txt") then
+    local savedKey = readfile("MyHubKeySystem/" .. configName .. ".txt")
+    if savedKey and savedKey ~= "" then
+        print("Найден сохранённый ключ:", savedKey)
+        CheckKey(savedKey)
+    end
+end
