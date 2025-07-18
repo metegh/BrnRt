@@ -1,127 +1,107 @@
-local HttpService = game:GetService("HttpService")
-local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
-local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+-- // === НАСТРОЙКИ === \\ --
+local TELEPORT_CFRAME = CFrame.new(472.692626953125, -6.60106897354126 + 6, -99.03443145751953) -- твоя точка (на 6 выше)
+local FLY_SPEED = 5 -- скорость полёта
+local KEY_TOGGLE_FLY = Enum.KeyCode.F -- включить/выключить флай
+local KEY_TELEPORT = Enum.KeyCode.T -- моментальный телепорт
 
--- 🔹 PandaAuth Настройки
-local API_KEY = "84a02f231b73ee4f6c6a8eb3e82a6198523c32e1dcf19f09e8bc132f72f0b497"
-local SERVICE_IDENTIFIER = "rblhub" -- твой Identifier Name
-local API_URL = "https://api.pandadevelopment.net/api/user"
-local KEY_LINK = "https://pandaauth.gg/rblhub" -- прямая ссылка на получение ключа
+-- // === ИНИЦИАЛИЗАЦИЯ === \\ --
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
 
--- 🔹 Конфигурация для сохранения ключа
-SaveManager:SetLibrary(Fluent)
-SaveManager:SetFolder("MyHubKeySystem")
-SaveManager:BuildConfigSection()
-
-local Window = Fluent:CreateWindow({
-    Title = "Key System | PandaAuth",
-    SubTitle = "by PandaDevelopment",
-    TabWidth = 160,
-    Size = UDim2.fromOffset(400, 200),
-    Acrylic = true,
-    Theme = "Dark"
-})
-
-local Tabs = {
-    Main = Window:AddTab({ Title = "Key System", Icon = "" })
-}
-
-local userKey = ""
-local configName = "SavedKey"
-
--- ✅ Функция проверки ключа
-local function CheckKey(Key)
-    local Response
-    local success, err = pcall(function()
-        Response = syn.request({
-            Url = API_URL,
-            Method = "GET",
-            Headers = {
-                ["Authorization"] = "Bearer " .. Key,
-                ["x-api-key"] = API_KEY,
-                ["service"] = SERVICE_IDENTIFIER
-            }
-        })
-    end)
-
-    if not success or not Response or Response.StatusCode ~= 200 then
-        Fluent:Notify({
-            Title = "Ошибка",
-            Content = "Неверный ключ или API недоступно!",
-            Duration = 5
-        })
-        return false
+-- // === NETLESS BYPASS === \\ --
+for _, v in ipairs(character:GetDescendants()) do
+    if v:IsA("BasePart") then
+        v.CanCollide = false
+        v.AssemblyLinearVelocity = Vector3.new(0, -25, 0)
+        v.CustomPhysicalProperties = PhysicalProperties.new(0, 0, 0, 0, 0)
+        task.spawn(function()
+            while task.wait() do
+                v.AssemblyLinearVelocity = Vector3.new(0, -25, 0)
+            end
+        end)
     end
-
-    local Data = HttpService:JSONDecode(Response.Body)
-
-    if Data and Data.id then
-        Fluent:Notify({
-            Title = "Успех!",
-            Content = "Добро пожаловать, " .. Data.username,
-            Duration = 5
-        })
-
-        -- ✅ Сохраняем ключ
-        SaveManager:SetIgnoreIndexes({})
-        SaveManager:Save(configName)
-        writefile("MyHubKeySystem/" .. configName .. ".txt", Key)
-
-        -- ✅ Запуск твоего основного хаба
-        task.wait(1)
-        loadstring(game:HttpGet("https://pastebin.com/raw/ВАШ_ХАБ"))()
-
-        return true
-    end
-
-    Fluent:Notify({
-        Title = "Ошибка",
-        Content = "Ключ не найден!",
-        Duration = 5
-    })
-    return false
 end
 
--- ✅ ТЕКСТБОКС ДЛЯ ВВОДА КЛЮЧА
-local KeyInput = Tabs.Main:AddInput("KeyInput", {
-    Title = "Введите ключ:",
-    Default = "",
-    Placeholder = "Ваш PandaAuth ключ",
-    Finished = true,
-    Callback = function(Value)
-        userKey = Value
-    end
-})
+-- // === ПЕРЕМЕННЫЕ === \\ --
+local flying = false
+local bodyGyro, bodyVel
 
--- ✅ КНОПКА ПРОВЕРКИ КЛЮЧА
-Tabs.Main:AddButton({
-    Title = "✅ Проверить ключ",
-    Callback = function()
-        if userKey == "" then
-            return Fluent:Notify({Title = "Ошибка", Content = "Введите ключ!", Duration = 5})
+-- // === ФУНКЦИИ === \\ --
+local function startFly()
+    if flying then return end
+    flying = true
+
+    humanoid.PlatformStand = true
+
+    bodyGyro = Instance.new("BodyGyro")
+    bodyGyro.P = 9e4
+    bodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+    bodyGyro.CFrame = hrp.CFrame
+    bodyGyro.Parent = hrp
+
+    bodyVel = Instance.new("BodyVelocity")
+    bodyVel.Velocity = Vector3.new(0,0,0)
+    bodyVel.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    bodyVel.Parent = hrp
+
+    while flying do
+        bodyGyro.CFrame = workspace.CurrentCamera.CFrame
+        local moveDir = Vector3.new(0,0,0)
+
+        if UIS:IsKeyDown(Enum.KeyCode.W) then
+            moveDir = moveDir + workspace.CurrentCamera.CFrame.LookVector
         end
-        CheckKey(userKey)
-    end
-})
+        if UIS:IsKeyDown(Enum.KeyCode.S) then
+            moveDir = moveDir - workspace.CurrentCamera.CFrame.LookVector
+        end
+        if UIS:IsKeyDown(Enum.KeyCode.A) then
+            moveDir = moveDir - workspace.CurrentCamera.CFrame.RightVector
+        end
+        if UIS:IsKeyDown(Enum.KeyCode.D) then
+            moveDir = moveDir + workspace.CurrentCamera.CFrame.RightVector
+        end
+        if UIS:IsKeyDown(Enum.KeyCode.Space) then
+            moveDir = moveDir + Vector3.new(0,1,0)
+        end
+        if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then
+            moveDir = moveDir - Vector3.new(0,1,0)
+        end
 
--- ✅ КНОПКА ПОЛУЧЕНИЯ КЛЮЧА
-Tabs.Main:AddButton({
-    Title = "🔗 Получить ключ",
-    Callback = function()
-        setclipboard(KEY_LINK)
-        Fluent:Notify({
-            Title = "Скопировано!",
-            Content = "Ссылка на PandaAuth скопирована.",
-            Duration = 5
-        })
-    end
-})
-
--- ✅ АВТОЗАГРУЗКА КЛЮЧА (если уже сохранён)
-if isfile("MyHubKeySystem/" .. configName .. ".txt") then
-    local savedKey = readfile("MyHubKeySystem/" .. configName .. ".txt")
-    if savedKey and savedKey ~= "" then
-        print("Найден сохранённый ключ:", savedKey)
-        CheckKey(savedKey)
+        bodyVel.Velocity = moveDir * FLY_SPEED
+        task.wait()
     end
 end
+
+local function stopFly()
+    flying = false
+    humanoid.PlatformStand = false
+    if bodyGyro then bodyGyro:Destroy() end
+    if bodyVel then bodyVel:Destroy() end
+end
+
+local function teleportToCFrame(cframe)
+    stopFly()
+    task.wait(0.1)
+    hrp.CFrame = cframe
+    hrp.AssemblyLinearVelocity = Vector3.zero
+end
+
+-- // === КОНТРОЛ === \\ --
+UIS.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if input.KeyCode == KEY_TOGGLE_FLY then
+        if flying then
+            stopFly()
+        else
+            startFly()
+        end
+    elseif input.KeyCode == KEY_TELEPORT then
+        teleportToCFrame(TELEPORT_CFRAME)
+    end
+end)
+
+print("[✅] Флай и телепорт загружены! Нажми F для полёта, T для телепорта.")
