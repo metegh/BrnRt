@@ -1,10 +1,7 @@
--- // === НАСТРОЙКИ === \\ --
-local TELEPORT_CFRAME = CFrame.new(472.692626953125, -6.60106897354126 + 6, -99.03443145751953) -- твоя точка (на 6 выше)
-local FLY_SPEED = 5 -- скорость полёта
-local KEY_TOGGLE_FLY = Enum.KeyCode.F -- включить/выключить флай
-local KEY_TELEPORT = Enum.KeyCode.T -- моментальный телепорт
+-- === НАСТРОЙКИ ===
+local FLY_SPEED = 4 -- скорость полёта
+local KEY_TOGGLE_FLY = Enum.KeyCode.F
 
--- // === ИНИЦИАЛИЗАЦИЯ === \\ --
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local player = Players.LocalPlayer
@@ -12,7 +9,7 @@ local character = player.Character or player.CharacterAdded:Wait()
 local hrp = character:WaitForChild("HumanoidRootPart")
 local humanoid = character:WaitForChild("Humanoid")
 
--- // === NETLESS BYPASS === \\ --
+-- === NETLESS: отключаем физику и коллизии ===
 for _, v in ipairs(character:GetDescendants()) do
     if v:IsA("BasePart") then
         v.CanCollide = false
@@ -26,31 +23,17 @@ for _, v in ipairs(character:GetDescendants()) do
     end
 end
 
--- // === ПЕРЕМЕННЫЕ === \\ --
+-- === ПЕРЕМЕННЫЕ ===
 local flying = false
-local bodyGyro, bodyVel
 
--- // === ФУНКЦИИ === \\ --
+-- === ФУНКЦИЯ ФЛАЯ НА CFrame (сквозь стены) ===
 local function startFly()
     if flying then return end
     flying = true
-
     humanoid.PlatformStand = true
 
-    bodyGyro = Instance.new("BodyGyro")
-    bodyGyro.P = 9e4
-    bodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-    bodyGyro.CFrame = hrp.CFrame
-    bodyGyro.Parent = hrp
-
-    bodyVel = Instance.new("BodyVelocity")
-    bodyVel.Velocity = Vector3.new(0,0,0)
-    bodyVel.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-    bodyVel.Parent = hrp
-
     while flying do
-        bodyGyro.CFrame = workspace.CurrentCamera.CFrame
-        local moveDir = Vector3.new(0,0,0)
+        local moveDir = Vector3.new()
 
         if UIS:IsKeyDown(Enum.KeyCode.W) then
             moveDir = moveDir + workspace.CurrentCamera.CFrame.LookVector
@@ -71,7 +54,9 @@ local function startFly()
             moveDir = moveDir - Vector3.new(0,1,0)
         end
 
-        bodyVel.Velocity = moveDir * FLY_SPEED
+        if moveDir.Magnitude > 0 then
+            hrp.CFrame = hrp.CFrame + moveDir.Unit * FLY_SPEED
+        end
         task.wait()
     end
 end
@@ -79,18 +64,9 @@ end
 local function stopFly()
     flying = false
     humanoid.PlatformStand = false
-    if bodyGyro then bodyGyro:Destroy() end
-    if bodyVel then bodyVel:Destroy() end
 end
 
-local function teleportToCFrame(cframe)
-    stopFly()
-    task.wait(0.1)
-    hrp.CFrame = cframe
-    hrp.AssemblyLinearVelocity = Vector3.zero
-end
-
--- // === КОНТРОЛ === \\ --
+-- === КОНТРОЛ ===
 UIS.InputBegan:Connect(function(input, gp)
     if gp then return end
     if input.KeyCode == KEY_TOGGLE_FLY then
@@ -99,9 +75,7 @@ UIS.InputBegan:Connect(function(input, gp)
         else
             startFly()
         end
-    elseif input.KeyCode == KEY_TELEPORT then
-        teleportToCFrame(TELEPORT_CFRAME)
     end
 end)
 
-print("[✅] Флай и телепорт загружены! Нажми F для полёта, T для телепорта.")
+print("[✅] Флай через стены загружен! Нажми F для включения.")
