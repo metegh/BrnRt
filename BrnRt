@@ -70,6 +70,55 @@ Tabs.Main:AddButton({
     end
 })
 
+Tabs.Main:AddButton({
+    Title = "Find Max Price",
+    Description = "Телепорт к персонажу с наибольшей ценой ¥",
+    Callback = function()
+        local maxPrice = -math.huge
+        local targetCharacterPart = nil
+
+        local plots = workspace:FindFirstChild("Plots")
+        if not plots then
+            warn("Plots не найден в Workspace!")
+            return
+        end
+
+        for _, playerPlot in ipairs(plots:GetChildren()) do
+            if playerPlot:IsA("Model") then
+                local spots = playerPlot:FindFirstChild("Spots")
+                if spots then
+                    for _, character in ipairs(spots:GetChildren()) do
+                        local charLabel = character:FindFirstChild("Kurona")
+                        if charLabel and charLabel:FindFirstChild("CharacterLabel") then
+                            local billboard = charLabel.CharacterLabel:FindFirstChild("BillboardGui")
+                            if billboard and billboard:FindFirstChild("Price") and billboard.Price:IsA("TextLabel") then
+                                local text = billboard.Price.Text or ""
+                                local num = tonumber(text:match("¥(%d+)"))
+                                if num and num > maxPrice then
+                                    maxPrice = num
+                                    targetCharacterPart = character
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+        if targetCharacterPart and maxPrice > -math.huge then
+            local player = Players.LocalPlayer
+            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                player.Character.HumanoidRootPart.CFrame = targetCharacterPart.CFrame + Vector3.new(0, 3, 0)
+                print("Телепорт к персонажу с ценой ¥" .. maxPrice)
+            else
+                warn("Персонаж игрока не найден!")
+            end
+        else
+            warn("Персонажи с Price не найдены!")
+        end
+    end
+})
+
 -- === [Остальные элементы UI, как в твоём коде] ===
 Tabs.Main:AddParagraph({
     Title = "Paragraph",
