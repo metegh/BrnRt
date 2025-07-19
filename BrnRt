@@ -1,30 +1,186 @@
--- === НАСТРОЙКИ ===
-local TARGET_CFRAME = CFrame.new(472.692626953125, -6.60106897354126 + 6, -99.03443145751953)
-local MOVE_SPEED = 45 -- скорость перемещения (увеличивай до предела, пока не кикает античит)
-
 local Players = game:GetService("Players")
-local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local hrp = character:WaitForChild("HumanoidRootPart")
-local humanoid = character:WaitForChild("Humanoid")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- === ФУНКЦИЯ "ЛЕГАЛЬНОГО" ПЕРЕМЕЩЕНИЯ ===
-local function moveToCFrame(targetCFrame, speed)
-    local targetPos = targetCFrame.Position
-
-    while (hrp.Position - targetPos).Magnitude > 5 do
-        local direction = (targetPos - hrp.Position).Unit
-        -- "Легально" двигаем HRP маленькими шагами
-        hrp.CFrame = hrp.CFrame + direction * speed * task.wait()
+-- Script to enable steal prompts
+local function findAndEnableStealPrompts()
+    local allPrompts = {}
+    
+    local function searchInModel(model)
+        for _, child in ipairs(model:GetDescendants()) do
+            if child:IsA("ProximityPrompt") and child.Name == "StealPrompt" then
+                table.insert(allPrompts, child)
+            end
+        end
     end
-
-    -- Финальный точный телепорт
-    hrp.CFrame = targetCFrame
-    hrp.AssemblyLinearVelocity = Vector3.zero
+    
+    searchInModel(workspace)
+    
+    for _, prompt in ipairs(allPrompts) do
+        prompt.Enabled = true
+    end
+    
+    return #allPrompts
 end
 
--- === ЗАПУСК ===
-task.spawn(function()
-    moveToCFrame(TARGET_CFRAME, MOVE_SPEED)
-    print("[✅] Доставлено к точке!")
+-- Run the prompt enabler in a separate coroutine
+coroutine.wrap(function()
+    while true do
+        findAndEnableStealPrompts()
+        wait(5)
+    end
+end)()
+
+-- Fluent UI Library
+local Library = loadstring(game:HttpGetAsync("https://github.com/ActualMasterOogway/Fluent-Renewed/releases/latest/download/Fluent.luau"))()
+local SaveManager = loadstring(game:HttpGetAsync("https://raw.githubusercontent.com/ActualMasterOogway/Fluent-Renewed/master/Addons/SaveManager.luau"))()
+local InterfaceManager = loadstring(game:HttpGetAsync("https://raw.githubusercontent.com/ActualMasterOogway/Fluent-Renewed/master/Addons/InterfaceManager.luau"))()
+ 
+local Window = Library:CreateWindow{
+    Title = `Rebellion {0.0.1}`,
+    SubTitle = "by metegh",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(830, 525),
+    Resize = true,
+    MinSize = Vector2.new(470, 380),
+    Acrylic = true,
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.RightControl
+}
+
+local Tabs = {
+    Main = Window:CreateTab{
+        Title = "Main",
+        Icon = "phosphor-users-bold"
+    },
+    Settings = Window:CreateTab{
+        Title = "Settings",
+        Icon = "settings"
+    }
+}
+
+local Options = Library.Options
+
+Library:Notify{
+    Title = "Notification",
+    Content = "This is a notification",
+    SubContent = "SubContent",
+    Duration = 5
+}
+
+-- Character Collector Finder
+local function findCharacterCollector(playerName)
+    local plots = workspace:FindFirstChild("Plots")
+    if not plots then
+        Library:Notify{
+            Title = "Error",
+            Content = "Plots folder not found!",
+            Duration = 5
+        }
+        return nil
+    end
+    
+    -- Find player model
+    local playerPlot
+    for _, plot in ipairs(plots:GetChildren()) do
+        if plot.Name:lower():find(playerName:lower()) then
+            playerPlot = plot
+            break
+        end
+    end
+    
+    if not playerPlot then
+        Library:Notify{
+            Title = "Error",
+            Content = "Player plot not found!",
+            Duration = 5
+        }
+        return nil
+    end
+    
+    -- Find CharacterCollector part
+    local collector = playerPlot:FindFirstChild("CharacterCollector", true)
+    if not collector then
+        Library:Notify{
+            Title = "Error",
+            Content = "CharacterCollector not found in player's plot!",
+            Duration = 5
+        }
+        return nil
+    end
+    
+    return collector
+end
+
+-- Create UI elements
+local playerNameInput = Tabs.Main:CreateInput("PlayerName", {
+    Title = "Player Name",
+    Default = "",
+    Placeholder = "Enter player name",
+    Numeric = false,
+    Finished = false
+})
+
+local findButton = Tabs.Main:CreateButton{
+    Title = "Find CharacterCollector",
+    Description = "Search for CharacterCollector in player's plot",
+    Callback = function()
+        local playerName = playerNameInput:GetValue()
+        if playerName == "" then
+            Library:Notify{
+                Title = "Error",
+                Content = "Please enter a player name!",
+                Duration = 5
+            }
+            return
+        end
+        
+        local collector = findCharacterCollector(playerName)
+        if collector then
+            Library:Notify{
+                Title = "Success",
+                Content = string.format("Found CharacterCollector at: %s", collector:GetFullName()),
+                Duration = 5
+            }
+        end
+    end
+}
+
+-- GoBack button replacement
+Tabs.Main:CreateButton{
+    Title = "GoBack",
+    Description = "Return to previous menu",
+    Callback = function()
+        -- Add your GoBack functionality here
+        Library:Notify{
+            Title = "GoBack",
+            Content = "GoBack button pressed",
+            Duration = 2
+        }
+    end
+}
+
+-- Add other UI elements from your original script
+local Toggle = Tabs.Main:CreateToggle("MyToggle", {Title = "Toggle", Default = false })
+Toggle:OnChanged(function()
+    print("Toggle changed:", Options.MyToggle.Value)
 end)
+
+-- Initialize managers
+SaveManager:SetLibrary(Library)
+InterfaceManager:SetLibrary(Library)
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetIgnoreIndexes{}
+InterfaceManager:SetFolder("FluentScriptHub")
+SaveManager:SetFolder("FluentScriptHub/specific-game")
+InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+SaveManager:BuildConfigSection(Tabs.Settings)
+
+Window:SelectTab(1)
+
+Library:Notify{
+    Title = "Fluent",
+    Content = "The script has been loaded.",
+    Duration = 8
+}
+
+SaveManager:LoadAutoloadConfig()
