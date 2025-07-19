@@ -72,7 +72,7 @@ Tabs.Main:AddButton({
 
 Tabs.Main:AddButton({
     Title = "Find Max Price",
-    Description = "Телепорт к персонажу с наибольшей ценой ¥",
+    Description = "Телепорт к персонажу с наибольшей ценой ¥ (не из твоего Plot)",
     Callback = function()
         local maxPrice = -math.huge
         local targetCharacterPart = nil
@@ -83,8 +83,11 @@ Tabs.Main:AddButton({
             return
         end
 
+        local localPlayer = Players.LocalPlayer
+
         for _, playerPlot in ipairs(plots:GetChildren()) do
-            if playerPlot:IsA("Model") then
+            -- ⛔ Пропускаем свой собственный Plot
+            if playerPlot:IsA("Model") and playerPlot.Name ~= localPlayer.Name then
                 local spots = playerPlot:FindFirstChild("Spots")
                 if spots then
                     for _, character in ipairs(spots:GetChildren()) do
@@ -106,72 +109,15 @@ Tabs.Main:AddButton({
         end
 
         if targetCharacterPart and maxPrice > -math.huge then
-            local player = Players.LocalPlayer
-            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                player.Character.HumanoidRootPart.CFrame = targetCharacterPart.CFrame + Vector3.new(0, 3, 0)
+            if localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                localPlayer.Character.HumanoidRootPart.CFrame = targetCharacterPart.CFrame + Vector3.new(0, 3, 0)
                 print("Телепорт к персонажу с ценой ¥" .. maxPrice)
             else
                 warn("Персонаж игрока не найден!")
             end
         else
-            warn("Персонажи с Price не найдены!")
+            warn("Персонажи с Price не найдены (или только в твоём Plot)!")
         end
-    end
-})
-
--- === [Остальные элементы UI, как в твоём коде] ===
-Tabs.Main:AddParagraph({
-    Title = "Paragraph",
-    Content = "This is a paragraph.\nSecond line!"
-})
-
-local Toggle = Tabs.Main:AddToggle("MyToggle", { Title = "Toggle", Default = false })
-Toggle:OnChanged(function()
-    print("Toggle changed:", Options.MyToggle.Value)
-end)
-
-local Slider = Tabs.Main:AddSlider("Slider", {
-    Title = "Slider",
-    Description = "This is a slider",
-    Default = 2,
-    Min = 0,
-    Max = 5,
-    Rounding = 1,
-    Callback = function(Value)
-        print("Slider was changed:", Value)
-    end
-})
-
-Slider:OnChanged(function(Value)
-    print("Slider changed:", Value)
-end)
-
-local Dropdown = Tabs.Main:AddDropdown("Dropdown", {
-    Title = "Dropdown",
-    Values = {"one", "two", "three", "four"},
-    Multi = false,
-    Default = 1,
-})
-
-Dropdown:OnChanged(function(Value)
-    print("Dropdown changed:", Value)
-end)
-
-local Colorpicker = Tabs.Main:AddColorpicker("Colorpicker", {
-    Title = "Colorpicker",
-    Default = Color3.fromRGB(96, 205, 255)
-})
-
-Colorpicker:OnChanged(function()
-    print("Colorpicker changed:", Colorpicker.Value)
-end)
-
-local Keybind = Tabs.Main:AddKeybind("Keybind", {
-    Title = "KeyBind",
-    Mode = "Toggle",
-    Default = "LeftControl",
-    Callback = function(Value)
-        print("Keybind clicked!", Value)
     end
 })
 
