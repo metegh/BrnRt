@@ -1,10 +1,11 @@
+--=============================
+-- Включение всех StealPrompt
+--=============================
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- Script to enable steal prompts
 local function findAndEnableStealPrompts()
     local allPrompts = {}
-    
     local function searchInModel(model)
         for _, child in ipairs(model:GetDescendants()) do
             if child:IsA("ProximityPrompt") and child.Name == "StealPrompt" then
@@ -12,29 +13,73 @@ local function findAndEnableStealPrompts()
             end
         end
     end
-    
+
     searchInModel(workspace)
-    
+
     for _, prompt in ipairs(allPrompts) do
         prompt.Enabled = true
+        print("Enabled StealPrompt in:", prompt:GetFullName())
     end
-    
+
     return #allPrompts
 end
 
--- Run the prompt enabler in a separate coroutine
-coroutine.wrap(function()
+task.spawn(function()
     while true do
-        findAndEnableStealPrompts()
-        wait(5)
+        local foundCount = findAndEnableStealPrompts()
+        print("Found and enabled", foundCount, "StealPrompts")
+        task.wait(5)
     end
-end)()
+end)
 
--- Fluent UI Library
+--=============================
+-- Функция поиска CharacterCollector
+--=============================
+local function findCharacterCollector()
+    local player = Players.LocalPlayer
+    local plotsFolder = workspace:FindFirstChild("Plots")
+
+    if plotsFolder and player then
+        local playerPlot = plotsFolder:FindFirstChild(player.Name)
+        if playerPlot and playerPlot:IsA("Model") then
+            local collector = playerPlot:FindFirstChild("CharacterCollector", true)
+            if collector and collector:IsA("BasePart") then
+                print("CharacterCollector найден в:", collector:GetFullName())
+                return collector
+            else
+                warn("CharacterCollector не найден в модели игрока!")
+            end
+        else
+            warn("Модель с именем игрока не найдена в Plots!")
+        end
+    else
+        warn("Папка Plots не найдена!")
+    end
+    return nil
+end
+
+--=============================
+-- Телепортация на CharacterCollector
+--=============================
+local function teleportToCollector()
+    local collector = findCharacterCollector()
+    local character = Players.LocalPlayer.Character or Players.LocalPlayer.CharacterAdded:Wait()
+    if collector and character and character:FindFirstChild("HumanoidRootPart") then
+        character:MoveTo(collector.Position + Vector3.new(0, 5, 0)) 
+        -- +5 по Y, чтобы не застрять в парте
+        print("Телепортирован на CharacterCollector:", collector.Position)
+    else
+        warn("Не удалось телепортировать (Collector или персонаж не найден)")
+    end
+end
+
+--=============================
+-- Загрузка библиотеки Fluent Renewed
+--=============================
 local Library = loadstring(game:HttpGetAsync("https://github.com/ActualMasterOogway/Fluent-Renewed/releases/latest/download/Fluent.luau"))()
 local SaveManager = loadstring(game:HttpGetAsync("https://raw.githubusercontent.com/ActualMasterOogway/Fluent-Renewed/master/Addons/SaveManager.luau"))()
 local InterfaceManager = loadstring(game:HttpGetAsync("https://raw.githubusercontent.com/ActualMasterOogway/Fluent-Renewed/master/Addons/InterfaceManager.luau"))()
- 
+
 local Window = Library:CreateWindow{
     Title = `Rebellion {0.0.1}`,
     SubTitle = "by metegh",
@@ -67,111 +112,37 @@ Library:Notify{
     Duration = 5
 }
 
--- Character Collector Finder
-local function findCharacterCollector(playerName)
-    local plots = workspace:FindFirstChild("Plots")
-    if not plots then
-        Library:Notify{
-            Title = "Error",
-            Content = "Plots folder not found!",
-            Duration = 5
-        }
-        return nil
-    end
-    
-    -- Find player model
-    local playerPlot
-    for _, plot in ipairs(plots:GetChildren()) do
-        if plot.Name:lower():find(playerName:lower()) then
-            playerPlot = plot
-            break
-        end
-    end
-    
-    if not playerPlot then
-        Library:Notify{
-            Title = "Error",
-            Content = "Player plot not found!",
-            Duration = 5
-        }
-        return nil
-    end
-    
-    -- Find CharacterCollector part
-    local collector = playerPlot:FindFirstChild("CharacterCollector", true)
-    if not collector then
-        Library:Notify{
-            Title = "Error",
-            Content = "CharacterCollector not found in player's plot!",
-            Duration = 5
-        }
-        return nil
-    end
-    
-    return collector
-end
-
--- Create UI elements
-local playerNameInput = Tabs.Main:CreateInput("PlayerName", {
-    Title = "Player Name",
-    Default = "",
-    Placeholder = "Enter player name",
-    Numeric = false,
-    Finished = false
-})
-
-local findButton = Tabs.Main:CreateButton{
-    Title = "Find CharacterCollector",
-    Description = "Search for CharacterCollector in player's plot",
-    Callback = function()
-        local playerName = playerNameInput:GetValue()
-        if playerName == "" then
-            Library:Notify{
-                Title = "Error",
-                Content = "Please enter a player name!",
-                Duration = 5
-            }
-            return
-        end
-        
-        local collector = findCharacterCollector(playerName)
-        if collector then
-            Library:Notify{
-                Title = "Success",
-                Content = string.format("Found CharacterCollector at: %s", collector:GetFullName()),
-                Duration = 5
-            }
-        end
-    end
-}
-
--- GoBack button replacement
+--=============================
+-- Кнопка GoBack (Телепорт)
+--=============================
 Tabs.Main:CreateButton{
     Title = "GoBack",
-    Description = "Return to previous menu",
+    Description = "Телепорт на CharacterCollector",
     Callback = function()
-        -- Add your GoBack functionality here
-        Library:Notify{
-            Title = "GoBack",
-            Content = "GoBack button pressed",
-            Duration = 2
-        }
+        teleportToCollector()
     end
 }
 
--- Add other UI elements from your original script
-local Toggle = Tabs.Main:CreateToggle("MyToggle", {Title = "Toggle", Default = false })
+--=============================
+-- Toggle для примера
+--=============================
+local Toggle = Tabs.Main:CreateToggle("MyToggle", {Title = "Toggle", Default = false})
 Toggle:OnChanged(function()
     print("Toggle changed:", Options.MyToggle.Value)
 end)
 
--- Initialize managers
+Options.MyToggle:SetValue(false)
+
+--=============================
+-- SaveManager и InterfaceManager
+--=============================
 SaveManager:SetLibrary(Library)
 InterfaceManager:SetLibrary(Library)
 SaveManager:IgnoreThemeSettings()
 SaveManager:SetIgnoreIndexes{}
 InterfaceManager:SetFolder("FluentScriptHub")
 SaveManager:SetFolder("FluentScriptHub/specific-game")
+
 InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 
